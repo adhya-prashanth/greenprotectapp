@@ -38,8 +38,7 @@ def get_base_image(path):
 
 @st.cache_data
 def get_font(size):
-    try: return ImageFont.truetype("arial.ttf", size)
-    except IOError: return ImageFont.load_default()
+    return ImageFont.load_default()
 
 def create_grid_image(base_img, status, text):
     if base_img is None: return None
