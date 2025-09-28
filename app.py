@@ -58,7 +58,7 @@ def create_grid_image(base_img, status, text):
     draw.rectangle([(0, 0), tile.size], fill=config["color"])
     tile = Image.alpha_composite(tile, overlay)
     draw = ImageDraw.Draw(tile)
-    font = get_font(24)
+    font = get_font(35)
     full_text = f"{text}\n({config['label']})"
     text_bbox = draw.textbbox((0, 0), full_text, font=font)
     text_width, text_height = text_bbox[2] - text_bbox[0], text_bbox[3] - text_bbox[1]
