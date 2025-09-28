@@ -29,7 +29,8 @@ STATE_SCANNING = 3
 STATE_SPRAYED = 4
 IMAGE_PATH = "crop_top_view.png"
 
-# --- Helper Functions ---
+# --- FONT CONSTANT ADDED ---
+FONT_PATH = "Roboto-Regular.ttf" # Ensure this file is in your GitHub repo!
 
 # --- Helper Functions ---
 
@@ -38,9 +39,15 @@ def get_base_image(path):
     try: return Image.open(path).convert("RGBA")
     except FileNotFoundError: st.error(f"Image file not found at '{path}'."); return None
 
-# REMOVE @st.cache_data HERE
+# FIX: Removed @st.cache_data to prevent PIL serialization errors
+# FIX: Uses ImageFont.truetype with the uploaded file to allow custom sizing
 def get_font(size):
-    return ImageFont.load_default()
+    try:
+        # Try to load the custom font file with the specified size
+        return ImageFont.truetype(FONT_PATH, size)
+    except IOError:
+        # Fall back to default if the file is not found (size will be ignored, but avoids crash)
+        return ImageFont.load_default()
 
 def create_grid_image(base_img, status, text):
     if base_img is None: return None
@@ -58,7 +65,10 @@ def create_grid_image(base_img, status, text):
     draw.rectangle([(0, 0), tile.size], fill=config["color"])
     tile = Image.alpha_composite(tile, overlay)
     draw = ImageDraw.Draw(tile)
-    font = get_font(35)
+    
+    # FIX: Increased font size to 35, now works with truetype if font is present
+    font = get_font(35) 
+    
     full_text = f"{text}\n({config['label']})"
     text_bbox = draw.textbbox((0, 0), full_text, font=font)
     text_width, text_height = text_bbox[2] - text_bbox[0], text_bbox[3] - text_bbox[1]
