@@ -30,23 +30,22 @@ STATE_SPRAYED = 4
 IMAGE_PATH = "crop_top_view.png"
 
 # --- FONT CONSTANT ADDED ---
-FONT_PATH = "Roboto-Regular.ttf" # Ensure this file is in your GitHub repo!
+FONT_PATH = "Roboto-Regular.ttf" # <-- CRITICAL: Ensure this file is on GitHub!
 
 # --- Helper Functions ---
 
-@st.cache_data
+# CRITICAL FIX: Removed @st.cache_data to prevent object serialization errors
 def get_base_image(path):
     try: return Image.open(path).convert("RGBA")
     except FileNotFoundError: st.error(f"Image file not found at '{path}'."); return None
 
-# FIX: Removed @st.cache_data to prevent PIL serialization errors
-# FIX: Uses ImageFont.truetype with the uploaded file to allow custom sizing
+# CRITICAL FIX: Removed @st.cache_data and uses truetype to enable custom sizing
 def get_font(size):
     try:
-        # Try to load the custom font file with the specified size
+        # Use a true-type font file from the repo to ensure size is respected
         return ImageFont.truetype(FONT_PATH, size)
     except IOError:
-        # Fall back to default if the file is not found (size will be ignored, but avoids crash)
+        # Fall back to default if font file is missing
         return ImageFont.load_default()
 
 def create_grid_image(base_img, status, text):
@@ -66,10 +65,11 @@ def create_grid_image(base_img, status, text):
     tile = Image.alpha_composite(tile, overlay)
     draw = ImageDraw.Draw(tile)
     
-    # FIX: Increased font size to 35, now works with truetype if font is present
+    # FONT SIZE IS SET TO 35 (This should now work)
     font = get_font(35) 
     
     full_text = f"{text}\n({config['label']})"
+    # The rest of the function remains the same...
     text_bbox = draw.textbbox((0, 0), full_text, font=font)
     text_width, text_height = text_bbox[2] - text_bbox[0], text_bbox[3] - text_bbox[1]
     text_pos = ((tile.width - text_width) / 2, (tile.height - text_height) / 2)
@@ -83,7 +83,7 @@ def add_to_log(message):
     st.session_state.event_log.insert(0, f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
     if len(st.session_state.event_log) > 20: st.session_state.event_log.pop()
 
-# --- State Initialization ---
+# --- State Initialization (unchanged) ---
 if 'initialized' not in st.session_state:
     st.session_state.grid_status = np.full((GRID_ROWS, GRID_COLS), STATE_HEALTHY, dtype=int)
     st.session_state.tank_level = 100.0
@@ -95,7 +95,7 @@ if 'initialized' not in st.session_state:
     st.session_state.initialized = True
     add_to_log("System Initialized. Ready for operation.")
 
-# --- UI Styling ---
+# --- UI Styling (unchanged) ---
 st.markdown("""
 <style>
     .title-gradient {
@@ -109,7 +109,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- Sidebar Controls ---
+# --- Sidebar Controls (unchanged) ---
 is_running = st.session_state.system_status != "Idle"
 with st.sidebar:
     st.header("⚙️ System Controls")
@@ -134,7 +134,7 @@ with st.sidebar:
         st.session_state.view = "blanket_spray"
         st.rerun()
         
-# --- Main View Controller ---
+# --- Main View Controller (unchanged) ---
 
 ## --- DASHBOARD VIEW ---
 if st.session_state.view == "dashboard":
@@ -189,7 +189,7 @@ else:
                 img_b64 = create_grid_image(base_image, status_array[r, c], f'Grid ({r},{c})')
                 cols[c].image(f"data:image/png;base64,{img_b64}")
 
-    # --- Logic for Autonomous Cycle ---
+    # --- Logic for Autonomous Cycle (unchanged) ---
     if st.session_state.view == "autonomous_cycle":
         st.session_state.system_status = "Scanning"
         add_to_log("🤖 Autonomous scan initiated...")
@@ -228,7 +228,7 @@ else:
         st.session_state.view = "dashboard"
         st.rerun()
 
-    # --- Logic for Manual Spray ---
+    # --- Logic for Manual Spray (unchanged) ---
     elif st.session_state.view == "manual_spray":
         st.session_state.system_status = "Spraying"
         target = st.session_state.manual_target
@@ -251,7 +251,7 @@ else:
         st.session_state.view = "dashboard"
         st.rerun()
 
-    # --- Logic for Blanket Spray ---
+    # --- Logic for Blanket Spray (unchanged) ---
     elif st.session_state.view == "blanket_spray":
         st.session_state.system_status = "Spraying"
         add_to_log("📢 Simultaneous blanket spray initiated for all grids.")
