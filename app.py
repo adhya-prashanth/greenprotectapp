@@ -1,5 +1,5 @@
 # app.py
-# Green Protect - Final Version with Simultaneous Spraying
+# Green Protect - Final Version with Simultaneous Spraying + Bigger Grid Text
 
 import streamlit as st
 import numpy as np
@@ -29,30 +29,35 @@ STATE_SCANNING = 3
 STATE_SPRAYED = 4
 IMAGE_PATH = "crop_top_view.png"
 
-# --- FONT CONSTANT ADDED ---
-FONT_PATH = "Roboto-Regular.ttf" # <-- CRITICAL: Ensure this file is on GitHub!
+# --- FONT CONSTANT ---
+FONT_PATH = "Roboto-Regular.ttf"  # Ensure this file is in repo
+
 
 # --- Helper Functions ---
 
-# CRITICAL FIX: Removed @st.cache_data to prevent object serialization errors
 def get_base_image(path):
-    try: return Image.open(path).convert("RGBA")
-    except FileNotFoundError: st.error(f"Image file not found at '{path}'."); return None
+    try:
+        return Image.open(path).convert("RGBA")
+    except FileNotFoundError:
+        st.error(f"Image file not found at '{path}'.")
+        return None
 
-# CRITICAL FIX: Removed @st.cache_data and uses truetype to enable custom sizing
+
 def get_font(size):
     try:
-        # Use a true-type font file from the repo to ensure size is respected
         return ImageFont.truetype(FONT_PATH, size)
     except IOError:
-        # Fall back to default if font file is missing
         return ImageFont.load_default()
 
+
 def create_grid_image(base_img, status, text):
-    if base_img is None: return None
+    if base_img is None:
+        return None
+
     tile = base_img.copy()
     overlay = Image.new("RGBA", tile.size)
     draw = ImageDraw.Draw(overlay)
+
     status_map = {
         STATE_HEALTHY: {"color": (46, 204, 113, 100), "label": "Healthy"},
         STATE_DISEASED: {"color": (231, 76, 60, 150), "label": "Diseased"},
@@ -60,30 +65,40 @@ def create_grid_image(base_img, status, text):
         STATE_SCANNING: {"color": (241, 196, 15, 150), "label": "Scanning"},
         STATE_SPRAYED: {"color": (142, 68, 173, 150), "label": "Sprayed"},
     }
-    config = status_map.get(status, {"color": (0,0,0,80), "label": "Unknown"})
+    config = status_map.get(status, {"color": (0, 0, 0, 80), "label": "Unknown"})
+
+    # Draw colored overlay
     draw.rectangle([(0, 0), tile.size], fill=config["color"])
     tile = Image.alpha_composite(tile, overlay)
     draw = ImageDraw.Draw(tile)
-    
-    # FONT SIZE IS SET TO 35 (This should now work)
-    font = get_font(35) 
-    
+
+    # 🔥 Auto-scale font size relative to image height
+    font_size = int(tile.height * 0.20)   # ~20% of tile height
+    font = get_font(font_size)
+
     full_text = f"{text}\n({config['label']})"
-    # The rest of the function remains the same...
+
+    # Get text bounding box for centering
     text_bbox = draw.textbbox((0, 0), full_text, font=font)
     text_width, text_height = text_bbox[2] - text_bbox[0], text_bbox[3] - text_bbox[1]
     text_pos = ((tile.width - text_width) / 2, (tile.height - text_height) / 2)
-    draw.text((text_pos[0]+1, text_pos[1]+1), full_text, font=font, fill="black")
+
+    # Draw text with shadow
+    draw.text((text_pos[0] + 2, text_pos[1] + 2), full_text, font=font, fill="black")
     draw.text(text_pos, full_text, font=font, fill="white")
+
     buffered = BytesIO()
     tile.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
+
 def add_to_log(message):
     st.session_state.event_log.insert(0, f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
-    if len(st.session_state.event_log) > 20: st.session_state.event_log.pop()
+    if len(st.session_state.event_log) > 20:
+        st.session_state.event_log.pop()
 
-# --- State Initialization (unchanged) ---
+
+# --- State Initialization ---
 if 'initialized' not in st.session_state:
     st.session_state.grid_status = np.full((GRID_ROWS, GRID_COLS), STATE_HEALTHY, dtype=int)
     st.session_state.tank_level = 100.0
@@ -95,13 +110,14 @@ if 'initialized' not in st.session_state:
     st.session_state.initialized = True
     add_to_log("System Initialized. Ready for operation.")
 
-# --- UI Styling (unchanged) ---
+
+# --- UI Styling ---
 st.markdown("""
 <style>
     .title-gradient {
         font-size: 3.5rem;
         font-weight: bold;
-        background: -webkit-linear-gradient(45deg, #2193b0, #6dd5ed); /* Blue-Green Gradient */
+        background: -webkit-linear-gradient(45deg, #2193b0, #6dd5ed);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
@@ -109,7 +125,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- Sidebar Controls (unchanged) ---
+# --- Sidebar Controls ---
 is_running = st.session_state.system_status != "Idle"
 with st.sidebar:
     st.header("⚙️ System Controls")
@@ -134,9 +150,8 @@ with st.sidebar:
         st.session_state.view = "blanket_spray"
         st.rerun()
         
-# --- Main View Controller (unchanged) ---
 
-## --- DASHBOARD VIEW ---
+# --- Main View Controller ---
 if st.session_state.view == "dashboard":
     st.markdown('<div class="title-gradient">🌱 Green Protect</div>', unsafe_allow_html=True)
     st.markdown("Main dashboard for system monitoring and manual control.")
@@ -144,9 +159,7 @@ if st.session_state.view == "dashboard":
 
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric(label="System Status", value=st.session_state.system_status)
-    # --- THIS LINE IS CHANGED ---
     with col2: st.metric(label="Plots Treated", value=st.session_state.sprayed_plots_count)
-    # --- ---
     with col3: st.metric(label="Tank Level", value=f"{st.session_state.tank_level:.1f} %")
     with col4: st.metric(label="Battery Level", value=f"{st.session_state.battery_level:.1f} %")
     st.divider()
@@ -156,8 +169,16 @@ if st.session_state.view == "dashboard":
         st.subheader("🌾 Interactive Field Map")
         base_image = get_base_image(IMAGE_PATH)
         if base_image:
-            images_b64 = [f"data:image/png;base64,{create_grid_image(base_image, st.session_state.grid_status[r,c], f'Grid ({r},{c})')}" for r in range(GRID_ROWS) for c in range(GRID_COLS)]
-            clicked_index = clickable_images(images_b64, titles=[f"Grid {i}" for i in range(len(images_b64))], div_style={"display": "grid", "grid-template-columns": f"repeat({GRID_COLS}, 1fr)", "gap": "8px"}, img_style={"height": "130px", "width": "100%", "object-fit": "cover", "border-radius": "10px", "cursor": "pointer"})
+            images_b64 = [
+                f"data:image/png;base64,{create_grid_image(base_image, st.session_state.grid_status[r,c], f'Grid ({r},{c})')}"
+                for r in range(GRID_ROWS) for c in range(GRID_COLS)
+            ]
+            clicked_index = clickable_images(
+                images_b64,
+                titles=[f"Grid {i}" for i in range(len(images_b64))],
+                div_style={"display": "grid", "grid-template-columns": f"repeat({GRID_COLS}, 1fr)", "gap": "8px"},
+                img_style={"height": "130px", "width": "100%", "object-fit": "cover", "border-radius": "10px", "cursor": "pointer"}
+            )
             if clicked_index > -1:
                 r, c = clicked_index // GRID_COLS, clicked_index % GRID_COLS
                 if st.session_state.grid_status[r, c] in [STATE_HEALTHY, STATE_SPRAYED]:
@@ -168,9 +189,13 @@ if st.session_state.view == "dashboard":
     with log_col:
         st.subheader("📜 Live Event Log")
         log_content = "<br>".join(st.session_state.event_log)
-        st.markdown(f'<div style="background-color:#1F2937; border-radius:10px; padding:10px; height:520px; overflow-y:auto; border:1px solid #4B5563; font-family:monospace;">{log_content}</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div style="background-color:#1F2937; border-radius:10px; padding:10px; height:520px; overflow-y:auto; '
+            f'border:1px solid #4B5563; font-family:monospace;">{log_content}</div>',
+            unsafe_allow_html=True
+        )
 
-## --- ANIMATION VIEWS (Autonomous, Manual, Blanket) ---
+# --- Animation Views ---
 else:
     st.markdown('<div class="title-gradient">🌱 Green Protect</div>', unsafe_allow_html=True)
     st.markdown(f"**Current Task:** {st.session_state.view.replace('_', ' ').title()}")
@@ -181,7 +206,8 @@ else:
 
     def update_static_display(status_array):
         base_image = get_base_image(IMAGE_PATH)
-        if not base_image: return
+        if not base_image:
+            return
         with grid_placeholder.container():
             cols = st.columns(GRID_COLS)
             for i in range(GRID_ROWS * GRID_COLS):
@@ -189,7 +215,7 @@ else:
                 img_b64 = create_grid_image(base_image, status_array[r, c], f'Grid ({r},{c})')
                 cols[c].image(f"data:image/png;base64,{img_b64}")
 
-    # --- Logic for Autonomous Cycle (unchanged) ---
+    # --- Autonomous Cycle ---
     if st.session_state.view == "autonomous_cycle":
         st.session_state.system_status = "Scanning"
         add_to_log("🤖 Autonomous scan initiated...")
@@ -228,7 +254,7 @@ else:
         st.session_state.view = "dashboard"
         st.rerun()
 
-    # --- Logic for Manual Spray (unchanged) ---
+    # --- Manual Spray ---
     elif st.session_state.view == "manual_spray":
         st.session_state.system_status = "Spraying"
         target = st.session_state.manual_target
@@ -251,7 +277,7 @@ else:
         st.session_state.view = "dashboard"
         st.rerun()
 
-    # --- Logic for Blanket Spray (unchanged) ---
+    # --- Blanket Spray ---
     elif st.session_state.view == "blanket_spray":
         st.session_state.system_status = "Spraying"
         add_to_log("📢 Simultaneous blanket spray initiated for all grids.")
@@ -274,7 +300,7 @@ else:
                     st.session_state.sprayed_plots_count += 1
                     plots_actually_sprayed += 1
                 else:
-                    st.session_state.grid_status[r, c] = STATE_HEALTHY # Revert if no pesticide left
+                    st.session_state.grid_status[r, c] = STATE_HEALTHY
         
         if plots_actually_sprayed < GRID_ROWS * GRID_COLS:
             add_to_log(f"⚠️ Tank empty. Only {plots_actually_sprayed} grids were treated.")
