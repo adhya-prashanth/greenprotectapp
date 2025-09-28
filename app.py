@@ -31,12 +31,14 @@ IMAGE_PATH = "crop_top_view.png"
 
 # --- Helper Functions ---
 
+# --- Helper Functions ---
+
 @st.cache_data
 def get_base_image(path):
     try: return Image.open(path).convert("RGBA")
     except FileNotFoundError: st.error(f"Image file not found at '{path}'."); return None
 
-@st.cache_data
+# REMOVE @st.cache_data HERE
 def get_font(size):
     return ImageFont.load_default()
 
