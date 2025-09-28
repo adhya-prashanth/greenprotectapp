@@ -1,5 +1,5 @@
 # app.py
-# Green Protect - Final Version with Simultaneous Spraying
+# LeafLens - Final Version with Simultaneous Spraying
 
 import streamlit as st
 import numpy as np
@@ -13,7 +13,7 @@ from streamlit_clickable_images import clickable_images
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="Green Protect",
+    page_title="LeafLens", # CHANGED: Title updated to LeafLens
     page_icon="🌱",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -29,7 +29,7 @@ STATE_SCANNING = 3
 STATE_SPRAYED = 4
 IMAGE_PATH = "crop_top_view.png"
 
-# --- FONT CONSTANT: MUST MATCH THE FILE ON GITHUB ---
+# --- FONT CONSTANT: CRITICAL TO ENSURE THIS FILE IS ON GITHUB ---
 FONT_PATH = "Roboto-Regular.ttf"
 
 # --- Helper Functions ---
@@ -94,15 +94,28 @@ if 'initialized' not in st.session_state:
     st.session_state.initialized = True
     add_to_log("System Initialized. Ready for operation.")
 
-# --- UI Styling ---
+# --- UI Styling (Updated Gradient and Title Container) ---
 st.markdown("""
 <style>
     .title-gradient {
         font-size: 3.5rem;
         font-weight: bold;
-        background: -webkit-linear-gradient(45deg, #2193b0, #6dd5ed); /* Blue-Green Gradient */
+        /* FIX: Changed gradient to visible Blue-Green transition */
+        background: -webkit-linear-gradient(45deg, #2193b0, #2ecc71); 
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        display: inline-block; 
+    }
+    /* FIX: Container to hold the emoji and the gradient text side-by-side */
+    .title-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .title-container h1 {
+        margin: 0;
+        padding: 0;
+        font-size: 3.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -137,15 +150,14 @@ with st.sidebar:
 
 ## --- DASHBOARD VIEW ---
 if st.session_state.view == "dashboard":
-    st.markdown('<div class="title-gradient">🌱 Green Protect</div>', unsafe_allow_html=True)
+    # CHANGED: Title rendered with separate emoji and gradient div
+    st.markdown('<div class="title-container"><h1>🌱</h1><div class="title-gradient">LeafLens</div></div>', unsafe_allow_html=True)
     st.markdown("Main dashboard for system monitoring and manual control.")
     st.divider()
 
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric(label="System Status", value=st.session_state.system_status)
-    # --- THIS LINE IS CHANGED ---
     with col2: st.metric(label="Plots Treated", value=st.session_state.sprayed_plots_count)
-    # --- ---
     with col3: st.metric(label="Tank Level", value=f"{st.session_state.tank_level:.1f} %")
     with col4: st.metric(label="Battery Level", value=f"{st.session_state.battery_level:.1f} %")
     st.divider()
@@ -171,7 +183,7 @@ if st.session_state.view == "dashboard":
 
 ## --- ANIMATION VIEWS (Autonomous, Manual, Blanket) ---
 else:
-    st.markdown('<div class="title-gradient">🌱 Green Protect</div>', unsafe_allow_html=True)
+    st.markdown('<div class="title-container"><h1>🌱</h1><div class="title-gradient">LeafLens</div></div>', unsafe_allow_html=True)
     st.markdown(f"**Current Task:** {st.session_state.view.replace('_', ' ').title()}")
     st.divider()
     
