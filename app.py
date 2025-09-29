@@ -219,14 +219,9 @@ def update_video_and_log():
     # Video
     video_header_placeholder.subheader("📹 Live Feed")
     
-    # FIX: Use HTML Markdown injection to remove controls and simulate GIF behavior
-    html_video = f"""
-    <video width="100%" height="auto" autoplay loop muted playsinline>
-        <source src="{CAMERA_FEED_URL}" type="video/mp4">
-        Your browser does not support the video tag.
-    </video>
-    """
-    video_player_placeholder.markdown(html_video, unsafe_allow_html=True)
+    # FIX: Reverted to st.video for stable file path handling.
+    # It will play reliably, but may show minimal controls based on the browser.
+    video_player_placeholder.video(CAMERA_FEED_URL, loop=True, start_time=0, muted=True) 
 
 
     # Log
