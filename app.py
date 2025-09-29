@@ -38,8 +38,9 @@ CAMERA_FEED_URL = "Camera feed.mp4"
 
 # --- NEW DISEASE CONSTANT ---
 DISEASE_TYPES = ["Blight (Severe)", "Rust (Moderate)", "Powdery Mildew (Moderate)", "Leaf Spot (Low)", "Aphids (Severe)", "Nematodes (Low)"]
-# --- NEW CONSTANT: Pesticide used per grid in Autonomous Cycle ---
-AUTONOMOUS_SPRAY_AMOUNT = 2.5 
+# --- NEW CONSTANT: Base chemical amount in Liters (L) ---
+BASE_SPRAY_AMOUNT = 1.0 
+TANK_CAPACITY_LITERS = 100.0 # Initial tank capacity in Liters
 
 # --- Helper Functions ---
 
@@ -57,7 +58,7 @@ def get_font(size):
         # Fall back to default if font file is missing
         return ImageFont.load_default()
 
-def create_grid_image(base_img, status, text):
+def create_grid_image(base_img, status, r, c): # Added r, c to function signature
     if base_img is None: return None
     tile = base_img.copy()
     overlay = Image.new("RGBA", tile.size)
@@ -77,7 +78,9 @@ def create_grid_image(base_img, status, text):
     # FONT SIZE IS SET TO 35
     font = get_font(35) 
     
-    full_text = f"{text}\n({config['label']})"
+    # FIX: Display 1-indexed coordinates (r+1, c+1)
+    full_text = f"Grid ({r+1},{c+1})\n({config['label']})"
+    
     text_bbox = draw.textbbox((0, 0), full_text, font=font)
     text_width, text_height = text_bbox[2] - text_bbox[0], text_bbox[3] - text_bbox[1]
     text_pos = ((tile.width - text_width) / 2, (tile.height - text_height) / 2)
@@ -102,7 +105,7 @@ def add_to_log(message):
     st.session_state.event_log.insert(0, f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
     if len(st.session_state.event_log) > 20: st.session_state.event_log.pop()
 
-# NEW: Function to determine urgency based on disease name
+# NEW: Function to determine urgency and set label
 def get_urgency_level(disease_name):
     if "Severe" in disease_name:
         return "Severe 🔴"
@@ -111,16 +114,24 @@ def get_urgency_level(disease_name):
     else: # Low, or any other unknown disease
         return "Low 🟡"
 
+# NEW: Function to calculate variable pesticide amount based on urgency
+def get_pesticide_amount(disease_name):
+    if "Severe" in disease_name:
+        return 2.0 * BASE_SPRAY_AMOUNT # 2.0 L
+    elif "Moderate" in disease_name:
+        return 1.5 * BASE_SPRAY_AMOUNT # 1.5 L
+    else: # Low or default
+        return 1.0 * BASE_SPRAY_AMOUNT # 1.0 L
+
 # --- State Initialization ---
 if 'initialized' not in st.session_state:
     st.session_state.grid_status = np.full((GRID_ROWS, GRID_COLS), STATE_HEALTHY, dtype=int)
-    st.session_state.tank_level = 100.0
+    st.session_state.tank_level = TANK_CAPACITY_LITERS # Changed to Liters
     st.session_state.battery_level = 100.0
     st.session_state.sprayed_plots_count = 0
     st.session_state.event_log = []
     st.session_state.system_status = "Idle"
     st.session_state.view = "dashboard"
-    # NEW STATE: Stores results of the last scan
     st.session_state.last_scan_results = None 
     st.session_state.initialized = True
     add_to_log("System Initialized. Ready for operation.")
@@ -177,12 +188,14 @@ with st.sidebar:
 
     st.divider()
     st.subheader("Manual Spray")
-    row_sel = st.selectbox("Select Row", range(GRID_ROWS), disabled=is_running)
-    col_sel = st.selectbox("Select Column", range(GRID_COLS), disabled=is_running)
-    manual_amount = st.slider("Pesticide Amount (%)", 1.0, 10.0, 2.5, 0.5, disabled=is_running)
+    row_sel = st.selectbox("Select Row (1-4)", range(GRID_ROWS), format_func=lambda x: x + 1, disabled=is_running)
+    col_sel = st.selectbox("Select Column (1-4)", range(GRID_COLS), format_func=lambda x: x + 1, disabled=is_running)
+    # Manual amount changed to Liters (L) for consistency
+    manual_amount = st.slider("Pesticide Amount (L)", 1.0, 10.0, 2.5, 0.5, disabled=is_running)
 
     if st.button("Spray Selected Grid", use_container_width=True, disabled=is_running):
         st.session_state.view = "manual_spray"
+        # Store 0-indexed coordinates for array access, but use 1-indexed in UI
         st.session_state.manual_target = {"coords": (row_sel, col_sel), "amount": manual_amount}
         st.rerun()
     
@@ -200,7 +213,8 @@ st.divider()
 col1, col2, col3, col4 = st.columns(4)
 with col1: st.metric(label="System Status", value=st.session_state.system_status)
 with col2: st.metric(label="Grids Treated", value=st.session_state.sprayed_plots_count)
-with col3: st.metric(label="Tank Level", value=f"{st.session_state.tank_level:.1f} %")
+# FIX: Changed Tank Level unit to Liters (L)
+with col3: st.metric(label="Tank Level", value=f"{st.session_state.tank_level:.1f} L") 
 with col4: st.metric(label="Cameras Active", value="4") 
 
 st.divider()
@@ -229,7 +243,8 @@ def update_static_display(status_array, is_dashboard_view=False):
     
     with grid_placeholder.container():
         if is_dashboard_view:
-            images_b64 = [f"data:image/png;base64,{create_grid_image(base_image, st.session_state.grid_status[r,c], f'Grid ({r},{c})')}" for r in range(GRID_ROWS) for c in range(GRID_COLS)]
+            # FIX: Pass 0-indexed r, c to create_grid_image for 1-indexed display
+            images_b64 = [f"data:image/png;base64,{create_grid_image(base_image, st.session_state.grid_status[r,c], r, c)}" for r in range(GRID_ROWS) for c in range(GRID_COLS)]
             
             # FIX: Increased image height to 180px for better vertical alignment
             clicked_index = clickable_images(images_b64, titles=[f"Grid {i}" for i in range(len(images_b64))], div_style={"display": "grid", "grid-template-columns": f"repeat({GRID_COLS}, 1fr)", "gap": "8px"}, img_style={"height": "180px", "width": "100%", "object-fit": "cover", "border-radius": "10px", "cursor": "pointer"})
@@ -238,13 +253,14 @@ def update_static_display(status_array, is_dashboard_view=False):
                 r, c = clicked_index // GRID_COLS, clicked_index % GRID_COLS
                 if st.session_state.grid_status[r, c] in [STATE_HEALTHY, STATE_SPRAYED]:
                     st.session_state.grid_status[r, c] = STATE_DISEASED
-                    add_to_log(f"Manual Inspection: Disease marked at Grid ({r},{c}).")
+                    # FIX: Log message uses 1-indexed coordinates
+                    add_to_log(f"Manual Inspection: Disease marked at Grid ({r+1},{c+1}).")
                     st.rerun()
         else:
             cols = st.columns(GRID_COLS)
             for i in range(GRID_ROWS * GRID_COLS):
                 r, c = i // GRID_COLS, i % GRID_COLS
-                img_b64 = create_grid_image(base_image, status_array[r, c], f'Grid ({r},{c})')
+                img_b64 = create_grid_image(base_image, status_array[r, c], r, c)
                 # Note: In the animation view, st.image scales, but the overall height should now be consistent 
                 cols[c].image(f"data:image/png;base64,{img_b64}")
 
@@ -290,10 +306,12 @@ elif st.session_state.view == "review_scan":
         
         # Prepare data for display
         results_data = [{
+            # FIX: Coordinates are already 1-indexed
             "Grid Coords": f"({r['coords'][0]}, {r['coords'][1]})", 
             "Detected Disease": r['disease'].split(" (")[0], # Show only the name
-            "Urgency": get_urgency_level(r['disease']), # NEW: Urgency level
-            "Pesticide Used": f"{AUTONOMOUS_SPRAY_AMOUNT:.1f} %" # NEW: Pesticide used
+            "Urgency": get_urgency_level(r['disease']), # Urgency level
+            # FIX: Displaying the variable amount in Liters (L)
+            "Pesticide Used": f"{r['pesticide_used']:.1f} L" 
         } for r in st.session_state.last_scan_results]
         
         st.success(f"Scan found **{len(results_data)}** plots requiring attention.")
@@ -341,7 +359,13 @@ else:
                 if is_diseased:
                     final_state = STATE_DISEASED
                     detected_disease = random.choice(DISEASE_TYPES)
-                    scan_results_to_store.append({"coords": (r, c), "disease": detected_disease})
+                    pesticide_used = get_pesticide_amount(detected_disease) # NEW: Calculate variable amount
+                    
+                    scan_results_to_store.append({
+                        "coords": (r+1, c+1), # Store 1-indexed coordinates
+                        "disease": detected_disease,
+                        "pesticide_used": pesticide_used # Store variable amount
+                    })
                 else:
                     final_state = STATE_HEALTHY 
                     
@@ -359,19 +383,37 @@ else:
         st.session_state.system_status = "Spraying"
         add_to_log("💧 Initiating simultaneous targeted spraying..."); time.sleep(1)
 
-        for r_plot, c_plot in diseased_coords:
-            st.session_state.grid_status[r_plot, c_plot] = STATE_SPRAYING
+        # --- Spraying logic updated to use variable amounts ---
+        total_sprayed_amount = 0
+        
+        for result in st.session_state.last_scan_results:
+            r, c = result['coords'][0] - 1, result['coords'][1] - 1 # Convert back to 0-index for array access
+            amount = result['pesticide_used']
+
+            if st.session_state.tank_level >= amount:
+                st.session_state.grid_status[r, c] = STATE_SPRAYING
+                total_sprayed_amount += amount
+            # If tank runs out, grids remain marked as DISEASED until manually sprayed/fixed
+        
         update_static_display(st.session_state.grid_status)
         
         bar = progress_placeholder.progress(0, text=f"Spraying {len(diseased_coords)} grids...")
         for i in range(100): time.sleep(0.1); bar.progress(i + 1)
         progress_placeholder.empty()
 
-        for r_plot, c_plot in diseased_coords:
-            st.session_state.grid_status[r_plot, c_plot] = STATE_SPRAYED
-            st.session_state.sprayed_plots_count += 1
-            st.session_state.tank_level = max(0, st.session_state.tank_level - AUTONOMOUS_SPRAY_AMOUNT)
-        add_to_log(f"✅ {len(diseased_coords)} grids have been treated.")
+        for result in st.session_state.last_scan_results:
+            r, c = result['coords'][0] - 1, result['coords'][1] - 1
+            amount = result['pesticide_used']
+            
+            if st.session_state.tank_level >= amount:
+                st.session_state.grid_status[r, c] = STATE_SPRAYED
+                st.session_state.sprayed_plots_count += 1
+                st.session_state.tank_level -= amount
+            else:
+                 # If tank ran out, log failure to treat plot
+                add_to_log(f"⚠️ Failed to spray Grid ({r+1},{c+1}). Tank empty.")
+
+        add_to_log(f"✅ {len(diseased_coords)} grids have been treated. Used {total_sprayed_amount:.1f} L.")
         
         st.session_state.system_status = "Idle"
         st.session_state.view = "dashboard"
@@ -381,19 +423,29 @@ else:
     elif st.session_state.view == "manual_spray":
         st.session_state.system_status = "Spraying"
         target = st.session_state.manual_target
-        r, c = target["coords"]; amount = target["amount"]
-        add_to_log(f"🛠️ Manual spray for Grid ({r},{c}) with {amount}% pesticide.")
+        # target["coords"] is already 0-indexed from selectbox, but using r, c for clarity
+        r, c = target["coords"][0], target["coords"][1] 
+        amount = target["amount"] # Amount is in Liters (L)
+        
+        add_to_log(f"🛠️ Manual spray for Grid ({r+1},{c+1}) with {amount:.1f} L pesticide.")
+
+        if st.session_state.tank_level < amount:
+            add_to_log(f"⚠️ Manual spray failed. Insufficient pesticide ({amount:.1f} L required, {st.session_state.tank_level:.1f} L available).")
+            st.session_state.system_status = "Idle"
+            st.session_state.view = "dashboard"
+            st.rerun()
+        
         st.session_state.grid_status[r, c] = STATE_SPRAYING
         update_static_display(st.session_state.grid_status)
         
-        bar = progress_placeholder.progress(0, text=f"Spraying Grid ({r},{c})...")
+        bar = progress_placeholder.progress(0, text=f"Spraying Grid ({r+1},{c+1})...")
         for i in range(100): time.sleep(0.1); bar.progress(i + 1)
         progress_placeholder.empty()
 
         st.session_state.grid_status[r, c] = STATE_SPRAYED
         st.session_state.tank_level = max(0, st.session_state.tank_level - amount)
         st.session_state.sprayed_plots_count += 1
-        add_to_log(f"✅ Grid ({r},{c}) has been treated.")
+        add_to_log(f"✅ Grid ({r+1},{c+1}) has been treated. Used {amount:.1f} L.")
         
         del st.session_state.manual_target
         st.session_state.system_status = "Idle"
@@ -405,6 +457,8 @@ else:
         st.session_state.system_status = "Spraying"
         add_to_log("📢 Simultaneous blanket spray initiated for all grids.")
         
+        BLANKET_SPRAY_AMOUNT = 1.5 # Fixed amount per grid for blanket spray (in L)
+
         for r in range(GRID_ROWS):
             for c in range(GRID_COLS):
                 st.session_state.grid_status[r, c] = STATE_SPRAYING
@@ -415,19 +469,21 @@ else:
         progress_placeholder.empty()
 
         plots_actually_sprayed = 0
+        total_blanket_used = 0
         for r in range(GRID_ROWS):
             for c in range(GRID_COLS):
-                if st.session_state.tank_level > 0:
+                if st.session_state.tank_level >= BLANKET_SPRAY_AMOUNT:
                     st.session_state.grid_status[r, c] = STATE_SPRAYED
-                    st.session_state.tank_level = max(0, st.session_state.tank_level - 1.5)
+                    st.session_state.tank_level -= BLANKET_SPRAY_AMOUNT
                     st.session_state.sprayed_plots_count += 1
                     plots_actually_sprayed += 1
+                    total_blanket_used += BLANKET_SPRAY_AMOUNT
                 else:
                     st.session_state.grid_status[r, c] = STATE_HEALTHY # Revert if no pesticide left
         
         if plots_actually_sprayed < GRID_ROWS * GRID_COLS:
             add_to_log(f"⚠️ Tank empty. Only {plots_actually_sprayed} grids were treated.")
-        add_to_log("✅ Blanket spray complete.")
+        add_to_log(f"✅ Blanket spray complete. Used {total_blanket_used:.1f} L.")
         st.session_state.system_status = "Idle"
         st.session_state.view = "dashboard"
         st.rerun()
