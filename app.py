@@ -218,7 +218,16 @@ def update_static_display(status_array, is_dashboard_view=False):
 def update_video_and_log():
     # Video
     video_header_placeholder.subheader("📹 Live Feed")
-    video_player_placeholder.video(CAMERA_FEED_URL, loop=True, start_time=0, muted=True)
+    
+    # FIX: Use HTML Markdown injection to remove controls and simulate GIF behavior
+    html_video = f"""
+    <video width="100%" height="auto" autoplay loop muted playsinline>
+        <source src="{CAMERA_FEED_URL}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    """
+    video_player_placeholder.markdown(html_video, unsafe_allow_html=True)
+
 
     # Log
     st.subheader("📜 Event Log")
