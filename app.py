@@ -35,6 +35,9 @@ FONT_PATH = "Roboto-Regular.ttf"
 # --- VIDEO CONSTANT UPDATED TO LOCAL FILE REFERENCE ---
 CAMERA_FEED_URL = "Camera feed.mp4" 
 
+# --- NEW DISEASE CONSTANT ---
+DISEASE_TYPES = ["Blight", "Rust", "Powdery Mildew", "Leaf Spot", "Aphids", "Nematodes"]
+
 # --- Helper Functions ---
 
 # FIX: Removed @st.cache_data to prevent object serialization errors for image object
@@ -105,6 +108,8 @@ if 'initialized' not in st.session_state:
     st.session_state.event_log = []
     st.session_state.system_status = "Idle"
     st.session_state.view = "dashboard"
+    # NEW STATE: Stores results of the last scan
+    st.session_state.last_scan_results = None 
     st.session_state.initialized = True
     add_to_log("System Initialized. Ready for operation.")
 
@@ -141,6 +146,12 @@ with st.sidebar:
     st.subheader("Autonomous Mode")
     if st.button("▶️ Start Autonomous Cycle", use_container_width=True, type="primary", disabled=is_running):
         st.session_state.view = "autonomous_cycle"
+        st.rerun()
+
+    # NEW BUTTON ADDED HERE
+    scan_review_disabled = is_running or st.session_state.last_scan_results is None
+    if st.button("🔎 Review Last Scan", use_container_width=True, disabled=scan_review_disabled):
+        st.session_state.view = "review_scan"
         st.rerun()
 
     st.divider()
@@ -246,6 +257,34 @@ if st.session_state.view == "dashboard":
     update_static_display(st.session_state.grid_status, is_dashboard_view=True)
     update_video_and_log()
 
+# --- NEW REVIEW SCAN VIEW ---
+elif st.session_state.view == "review_scan":
+    st.markdown('<div class="title-container"><h1>🌱</h1><div class="title-gradient">LeafLens</div></div>', unsafe_allow_html=True)
+    st.markdown(f"**Current Task:** Reviewing Last Scan Results")
+    st.divider()
+
+    st.subheader("Last Autonomous Scan Findings")
+
+    if st.session_state.last_scan_results and len(st.session_state.last_scan_results) > 0:
+        
+        # Prepare data for display
+        results_data = [{
+            "Grid Coords": f"({r['coords'][0]}, {r['coords'][1]})", 
+            "Detected Disease": r['disease']
+        } for r in st.session_state.last_scan_results]
+        
+        st.success(f"Scan found **{len(results_data)}** plots requiring attention.")
+        
+        st.dataframe(results_data, hide_index=True, use_container_width=True)
+
+    else:
+        st.warning("No disease was detected in the last scan, or no scan data is available. Please run an Autonomous Cycle first.")
+
+    st.divider()
+    if st.button("← Back to Dashboard", type="primary"):
+        st.session_state.view = "dashboard"
+        st.rerun()
+
 else: 
     update_video_and_log()
     
@@ -259,6 +298,7 @@ else:
         diseased_coords = set(random.sample(all_coords, num_diseased)) 
         
         current_status = st.session_state.grid_status.copy()
+        scan_results_to_store = [] # Temporarily store results during scan
         
         for r in range(GRID_ROWS):
             for c in range(GRID_COLS):
@@ -270,6 +310,8 @@ else:
                 
                 if is_diseased:
                     final_state = STATE_DISEASED
+                    detected_disease = random.choice(DISEASE_TYPES) # Assign random disease
+                    scan_results_to_store.append({"coords": (r, c), "disease": detected_disease})
                 else:
                     final_state = STATE_HEALTHY 
                     
@@ -279,7 +321,10 @@ else:
                 update_static_display(current_status)
                 time.sleep(0.05) 
 
-        add_to_log(f"✅ Scan complete. Found {num_diseased} diseased plots.")
+        # STORE FINAL SCAN RESULTS
+        st.session_state.last_scan_results = scan_results_to_store
+        
+        add_to_log(f"✅ Scan complete. Found {len(st.session_state.last_scan_results)} diseased plots.")
         st.session_state.system_status = "Spraying"
         add_to_log("💧 Initiating simultaneous targeted spraying..."); time.sleep(1)
 
