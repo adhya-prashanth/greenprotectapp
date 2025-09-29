@@ -35,7 +35,7 @@ FONT_PATH = "Roboto-Regular.ttf"
 # --- VIDEO CONSTANT ADDED ---
 # Using a sample video URL to simulate a continuous camera feed. 
 # Replace this URL with a path to your own video file if you upload one to GitHub.
-CAMERA_FEED_URL = "https://www.w3schools.com/html/mov_bbb.mp4" 
+CAMERA_FEED_URL = "https://youtube.com/shorts/0HlTE5tIQcs?si=FLTP9uXSUj23O04A" 
 
 # --- Helper Functions ---
 
