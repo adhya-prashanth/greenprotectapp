@@ -13,7 +13,7 @@ from streamlit_clickable_images import clickable_images
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="LeafLens", # CHANGED: Title updated to LeafLens
+    page_title="LeafLens", 
     page_icon="🌱",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -33,10 +33,20 @@ IMAGE_PATH = "crop_top_view.png"
 FONT_PATH = "Roboto-Regular.ttf"
 
 # --- VIDEO CONSTANT UPDATED TO LOCAL FILE REFERENCE ---
-# FIX: Using the local file name. Ensure 'Camera feed.mp4' is on GitHub!
 CAMERA_FEED_URL = "Camera feed.mp4" 
 
 # --- Helper Functions ---
+
+# NEW: Function to encode the video file into a Base64 string for embedding
+def get_video_base64(path):
+    try:
+        with open(path, "rb") as video_file:
+            encoded_string = base64.b64encode(video_file.read()).decode()
+        return encoded_string
+    except FileNotFoundError:
+        # If file is missing, log an error but don't crash the app
+        st.error(f"Video file not found at '{path}'. Please ensure it is uploaded to GitHub.")
+        return None
 
 # FIX: Removed @st.cache_data to prevent object serialization errors for image object
 def get_base_image(path):
@@ -98,19 +108,17 @@ if 'initialized' not in st.session_state:
     st.session_state.initialized = True
     add_to_log("System Initialized. Ready for operation.")
 
-# --- UI Styling (Updated Gradient, Title Container, and Video Controls Hiding) ---
+# --- UI Styling (Cleaned up CSS, Gradient/Title retained) ---
 st.markdown("""
 <style>
     .title-gradient {
         font-size: 3.5rem;
         font-weight: bold;
-        /* FIX: Changed gradient to visible Blue-Green transition */
         background: -webkit-linear-gradient(45deg, #2193b0, #2ecc71); 
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         display: inline-block; 
     }
-    /* FIX: Container to hold the emoji and the gradient text side-by-side */
     .title-container {
         display: flex;
         align-items: center;
@@ -121,23 +129,7 @@ st.markdown("""
         padding: 0;
         font-size: 3.5rem;
     }
-    /* START: AGGRESSIVE FIX to simulate GIF by hiding video controls */
-    /* Target the video element directly using attribute selector */
-    [data-testid="stVideo"] video {
-        pointer-events: none !important; /* Disable clicking to pause/resume */
-    }
-    /* Target the control bar specifically in major browsers */
-    [data-testid="stVideo"] video::-webkit-media-controls-panel,
-    [data-testid="stVideo"] video::-webkit-media-controls-enclosure,
-    [data-testid="stVideo"] video::-webkit-media-controls-timeline,
-    [data-testid="stVideo"] video::-moz-media-controls-panel,
-    [data-testid="stVideo"] video::-ms-media-controls-panel {
-        display: none !important;
-        opacity: 0 !important;
-        visibility: hidden !important;
-        height: 0 !important;
-    }
-    /* END: AGGRESSIVE FIX to simulate GIF by hiding video controls */
+    /* Removed aggressive video CSS hacks, relying on Base64 embedding */
 </style>
 """, unsafe_allow_html=True)
 
@@ -170,7 +162,6 @@ with st.sidebar:
 # --- Main View Controller ---
 
 ## --- Dashboard Components ---
-# Render title, metrics, and set up containers regardless of dashboard state
 st.markdown('<div class="title-container"><h1>🌱</h1><div class="title-gradient">LeafLens</div></div>', unsafe_allow_html=True)
 st.markdown("See. Detect. Protect.") 
 st.divider()
@@ -184,12 +175,9 @@ with col4: st.metric(label="Cameras Active", value="4")
 st.divider()
 
 # --- TOP ROW SETUP: Map and Video Containers ---
-# Map (3.5) and Video (1.5)
 map_col, video_col = st.columns([3.5, 1.5])
 
 # --- Placeholder definitions for animation ---
-# These need to be defined outside the if/else to be used by the animation logic.
-# They are scoped to the columns defined above.
 with map_col:
     map_header_placeholder = st.empty()
     grid_placeholder = st.empty()
@@ -206,17 +194,13 @@ def update_static_display(status_array, is_dashboard_view=False):
     base_image = get_base_image(IMAGE_PATH)
     if not base_image: return
     
-    # Render the static map header or just clear it if animating
     map_header_placeholder.subheader("1 Acre - 4x4 Grids")
     
-    # Render the actual grid visuals into the placeholder
     with grid_placeholder.container():
         if is_dashboard_view:
-            # Use clickable images for the dashboard view
             images_b64 = [f"data:image/png;base64,{create_grid_image(base_image, st.session_state.grid_status[r,c], f'Grid ({r},{c})')}" for r in range(GRID_ROWS) for c in range(GRID_COLS)]
             clicked_index = clickable_images(images_b64, titles=[f"Grid {i}" for i in range(len(images_b64))], div_style={"display": "grid", "grid-template-columns": f"repeat({GRID_COLS}, 1fr)", "gap": "8px"}, img_style={"height": "130px", "width": "100%", "object-fit": "cover", "border-radius": "10px", "cursor": "pointer"})
             
-            # Handle manual disease marking click event
             if clicked_index > -1:
                 r, c = clicked_index // GRID_COLS, clicked_index % GRID_COLS
                 if st.session_state.grid_status[r, c] in [STATE_HEALTHY, STATE_SPRAYED]:
@@ -224,7 +208,6 @@ def update_static_display(status_array, is_dashboard_view=False):
                     add_to_log(f"Manual Inspection: Disease marked at Grid ({r},{c}).")
                     st.rerun()
         else:
-            # Use simple image rendering for animation view (non-clickable)
             cols = st.columns(GRID_COLS)
             for i in range(GRID_ROWS * GRID_COLS):
                 r, c = i // GRID_COLS, i % GRID_COLS
@@ -236,9 +219,18 @@ def update_video_and_log():
     # Video
     video_header_placeholder.subheader("📹 Live Feed")
     
-    # FIX: Reverted to st.video for stable file path handling.
-    # We rely on the aggressive CSS hack above to hide the controls.
-    video_player_placeholder.video(CAMERA_FEED_URL, loop=True, start_time=0, muted=True) 
+    video_base64 = get_video_base64(CAMERA_FEED_URL)
+
+    if video_base64:
+        # NEW FIX: Use pure HTML/Base64 to force autoplay, loop, mute, and NO controls
+        html_video = f"""
+        <video width="100%" height="auto" autoplay loop muted playsinline>
+            <source src="data:video/mp4;base64,{video_base64}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        """
+        video_player_placeholder.markdown(html_video, unsafe_allow_html=True)
+    # else: If video fails to load, the error message is displayed by get_video_base64()
 
 
     # Log
@@ -249,12 +241,10 @@ def update_video_and_log():
 
 ## --- VIEW LOGIC ---
 if st.session_state.view == "dashboard":
-    # RENDER DASHBOARD: Map is clickable, video and log are static.
     update_static_display(st.session_state.grid_status, is_dashboard_view=True)
     update_video_and_log()
 
-else: # This handles 'autonomous_cycle', 'manual_spray', 'blanket_spray'
-    # RENDER ANIMATION SETUP: Map is animated, video and log are static.
+else: 
     update_video_and_log()
     
     # --- Logic for Autonomous Cycle (FIXED SCANNING FLOW) ---
@@ -270,12 +260,10 @@ else: # This handles 'autonomous_cycle', 'manual_spray', 'blanket_spray'
         
         for r in range(GRID_ROWS):
             for c in range(GRID_COLS):
-                # 1. SHOW SCANNING (Flash yellow)
                 current_status[r, c] = STATE_SCANNING
-                update_static_display(current_status) # Updates grid_placeholder in map_col
+                update_static_display(current_status) 
                 time.sleep(0.15) 
                 
-                # 2. DETERMINE FINAL STATE & REVEAL
                 is_diseased = (r, c) in diseased_coords
                 
                 if is_diseased:
