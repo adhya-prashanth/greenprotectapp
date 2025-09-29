@@ -163,7 +163,8 @@ if st.session_state.view == "dashboard":
     with col1: st.metric(label="System Status", value=st.session_state.system_status)
     with col2: st.metric(label="Grids Treated", value=st.session_state.sprayed_plots_count) # Custom wording
     with col3: st.metric(label="Tank Level", value=f"{st.session_state.tank_level:.1f} %")
-    with col4: st.metric(label="Battery Level", value=f"{st.session_state.battery_level:.1f} %")
+    # CHANGE 1: Replaced Battery Level with Cameras Active
+    with col4: st.metric(label="Cameras Active", value="4") 
     
     st.divider()
 
@@ -171,7 +172,8 @@ if st.session_state.view == "dashboard":
     grid_col, right_col = st.columns([3.5, 1.0])
     
     with grid_col:
-        st.subheader("🌾 Interactive Field Map")
+        # CHANGE 2: Updated Interactive Field Map header
+        st.subheader("🌾 1 Acre - 4x4 Grids") 
         base_image = get_base_image(IMAGE_PATH)
         if base_image:
             images_b64 = [f"data:image/png;base64,{create_grid_image(base_image, st.session_state.grid_status[r,c], f'Grid ({r},{c})')}" for r in range(GRID_ROWS) for c in range(GRID_COLS)]
