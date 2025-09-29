@@ -152,88 +152,123 @@ with st.sidebar:
         
 # --- Main View Controller ---
 
-## --- DASHBOARD VIEW ---
-if st.session_state.view == "dashboard":
-    # Title rendering
-    st.markdown('<div class="title-container"><h1>🌱</h1><div class="title-gradient">LeafLens</div></div>', unsafe_allow_html=True)
-    st.markdown("See. Detect. Protect.") # Custom wording
-    st.divider()
+## --- Dashboard Components ---
+# Render title, metrics, and set up containers regardless of dashboard state
+st.markdown('<div class="title-container"><h1>🌱</h1><div class="title-gradient">LeafLens</div></div>', unsafe_allow_html=True)
+st.markdown("See. Detect. Protect.") 
+st.divider()
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1: st.metric(label="System Status", value=st.session_state.system_status)
-    with col2: st.metric(label="Grids Treated", value=st.session_state.sprayed_plots_count) # Custom wording
-    with col3: st.metric(label="Tank Level", value=f"{st.session_state.tank_level:.1f} %")
-    with col4: st.metric(label="Cameras Active", value="4") 
-    
-    st.divider()
+col1, col2, col3, col4 = st.columns(4)
+with col1: st.metric(label="System Status", value=st.session_state.system_status)
+with col2: st.metric(label="Grids Treated", value=st.session_state.sprayed_plots_count)
+with col3: st.metric(label="Tank Level", value=f"{st.session_state.tank_level:.1f} %")
+with col4: st.metric(label="Cameras Active", value="4") 
 
-    # --- TOP ROW: Map and Video Side-by-Side ---
-    # Map (3.5) and Video (1.5)
-    map_col, video_col = st.columns([3.5, 1.5])
+st.divider()
+
+# --- TOP ROW SETUP: Map and Video Containers ---
+# Map (3.5) and Video (1.5)
+map_col, video_col = st.columns([3.5, 1.5])
+
+# --- Placeholder definitions for animation ---
+# These need to be defined outside the if/else to be used by the animation logic.
+# They are scoped to the columns defined above.
+with map_col:
+    map_header_placeholder = st.empty()
+    grid_placeholder = st.empty()
+
+with video_col:
+    video_header_placeholder = st.empty()
+    video_player_placeholder = st.empty()
     
-    with map_col:
-        st.subheader("1 Acre - 4x4 Grids") 
-        base_image = get_base_image(IMAGE_PATH)
-        if base_image:
+# Progress bar placeholder (used during animation)
+progress_placeholder = st.empty() 
+
+# --- Update function shared by dashboard and animation ---
+def update_static_display(status_array, is_dashboard_view=False):
+    base_image = get_base_image(IMAGE_PATH)
+    if not base_image: return
+    
+    # Render the static map header or just clear it if animating
+    map_header_placeholder.subheader("1 Acre - 4x4 Grids")
+    
+    # Render the actual grid visuals into the placeholder
+    with grid_placeholder.container():
+        if is_dashboard_view:
+            # Use clickable images for the dashboard view
             images_b64 = [f"data:image/png;base64,{create_grid_image(base_image, st.session_state.grid_status[r,c], f'Grid ({r},{c})')}" for r in range(GRID_ROWS) for c in range(GRID_COLS)]
             clicked_index = clickable_images(images_b64, titles=[f"Grid {i}" for i in range(len(images_b64))], div_style={"display": "grid", "grid-template-columns": f"repeat({GRID_COLS}, 1fr)", "gap": "8px"}, img_style={"height": "130px", "width": "100%", "object-fit": "cover", "border-radius": "10px", "cursor": "pointer"})
+            
+            # Handle manual disease marking click event
             if clicked_index > -1:
                 r, c = clicked_index // GRID_COLS, clicked_index % GRID_COLS
                 if st.session_state.grid_status[r, c] in [STATE_HEALTHY, STATE_SPRAYED]:
                     st.session_state.grid_status[r, c] = STATE_DISEASED
                     add_to_log(f"Manual Inspection: Disease marked at Grid ({r},{c}).")
                     st.rerun()
-
-    with video_col:
-        st.subheader("📹 Live Feed")
-        # CHANGE 1: Muted=True to remove sound
-        st.video(CAMERA_FEED_URL, loop=True, start_time=0, muted=True) 
-
-    # --- BOTTOM ROW: Event Log Stretched Across ---
-    st.subheader("📜 Event Log")
-    log_content = "<br>".join(st.session_state.event_log)
-    # Height adjusted to keep log concise but readable under the video/map
-    st.markdown(f'<div style="background-color:#1F2937; border-radius:10px; padding:10px; height:200px; overflow-y:auto; border:1px solid #4B5563; font-family:monospace;">{log_content}</div>', unsafe_allow_html=True)
-
-
-## --- ANIMATION VIEWS (Autonomous, Manual, Blanket) ---
-else:
-    # Title rendering
-    st.markdown('<div class="title-container"><h1>🌱</h1><div class="title-gradient">LeafLens</div></div>', unsafe_allow_html=True)
-    st.markdown(f"**Current Task:** {st.session_state.view.replace('_', ' ').title()}")
-    st.divider()
-    
-    grid_placeholder = st.empty()
-    progress_placeholder = st.empty()
-
-    def update_static_display(status_array):
-        base_image = get_base_image(IMAGE_PATH)
-        if not base_image: return
-        with grid_placeholder.container():
+        else:
+            # Use simple image rendering for animation view (non-clickable)
             cols = st.columns(GRID_COLS)
             for i in range(GRID_ROWS * GRID_COLS):
                 r, c = i // GRID_COLS, i % GRID_COLS
                 img_b64 = create_grid_image(base_image, status_array[r, c], f'Grid ({r},{c})')
                 cols[c].image(f"data:image/png;base64,{img_b64}")
 
-    # --- Logic for Autonomous Cycle ---
+# --- Video/Log update utility ---
+def update_video_and_log():
+    # Video
+    video_header_placeholder.subheader("📹 Live Feed")
+    video_player_placeholder.video(CAMERA_FEED_URL, loop=True, start_time=0, muted=True)
+
+    # Log
+    st.subheader("📜 Event Log")
+    log_content = "<br>".join(st.session_state.event_log)
+    st.markdown(f'<div style="background-color:#1F2937; border-radius:10px; padding:10px; height:200px; overflow-y:auto; border:1px solid #4B5563; font-family:monospace;">{log_content}</div>', unsafe_allow_html=True)
+
+
+## --- VIEW LOGIC ---
+if st.session_state.view == "dashboard":
+    # RENDER DASHBOARD: Map is clickable, video and log are static.
+    update_static_display(st.session_state.grid_status, is_dashboard_view=True)
+    update_video_and_log()
+
+else: # This handles 'autonomous_cycle', 'manual_spray', 'blanket_spray'
+    # RENDER ANIMATION SETUP: Map is animated, video and log are static.
+    update_video_and_log()
+    
+    # --- Logic for Autonomous Cycle (FIXED SCANNING FLOW) ---
     if st.session_state.view == "autonomous_cycle":
         st.session_state.system_status = "Scanning"
-        add_to_log("🤖 Autonomous scan initiated...")
+        add_to_log("🤖 Autonomous scan initiated on main grid...")
+        
         num_diseased = random.randint(3, 5)
         all_coords = [(r, c) for r in range(GRID_ROWS) for c in range(GRID_COLS)]
-        diseased_coords = set(random.sample(all_coords, num_diseased))
+        diseased_coords = set(random.sample(all_coords, num_diseased)) 
         
-        display_status = st.session_state.grid_status.copy()
+        current_status = st.session_state.grid_status.copy()
+        
         for r in range(GRID_ROWS):
             for c in range(GRID_COLS):
-                display_status[r, c] = STATE_SCANNING
-                update_static_display(display_status); time.sleep(0.25)
-                st.session_state.grid_status[r, c] = STATE_DISEASED if (r, c) in diseased_coords else STATE_HEALTHY
-                display_status[r, c] = st.session_state.grid_status[r, c]
-                update_static_display(display_status); time.sleep(0.1)
+                # 1. SHOW SCANNING (Flash yellow)
+                current_status[r, c] = STATE_SCANNING
+                update_static_display(current_status) # Updates grid_placeholder in map_col
+                time.sleep(0.15) 
+                
+                # 2. DETERMINE FINAL STATE & REVEAL
+                is_diseased = (r, c) in diseased_coords
+                
+                if is_diseased:
+                    final_state = STATE_DISEASED
+                else:
+                    final_state = STATE_HEALTHY 
+                    
+                st.session_state.grid_status[r, c] = final_state 
+                current_status[r, c] = final_state
+                
+                update_static_display(current_status)
+                time.sleep(0.05) 
 
-        add_to_log(f"✅ Scan complete. Found {len(diseased_coords)} diseased plots.")
+        add_to_log(f"✅ Scan complete. Found {num_diseased} diseased plots.")
         st.session_state.system_status = "Spraying"
         add_to_log("💧 Initiating simultaneous targeted spraying..."); time.sleep(1)
 
