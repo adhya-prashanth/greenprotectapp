@@ -32,10 +32,9 @@ IMAGE_PATH = "crop_top_view.png"
 # --- FONT CONSTANT: MUST MATCH THE FILE ON GITHUB ---
 FONT_PATH = "Roboto-Regular.ttf"
 
-# --- VIDEO CONSTANT ADDED ---
-# Using a sample video URL to simulate a continuous camera feed. 
-# Replace this URL with a path to your own video file if you upload one to GitHub.
-CAMERA_FEED_URL = "https://youtube.com/shorts/0HlTE5tIQcs?si=FLTP9uXSUj23O04A" 
+# --- VIDEO CONSTANT UPDATED TO LOCAL FILE REFERENCE ---
+# FIX: Using the local file name. Ensure 'Camera feed.mp4' is on GitHub!
+CAMERA_FEED_URL = "Camera feed.mp4" 
 
 # --- Helper Functions ---
 
@@ -157,18 +156,18 @@ with st.sidebar:
 if st.session_state.view == "dashboard":
     # Title rendering
     st.markdown('<div class="title-container"><h1>🌱</h1><div class="title-gradient">LeafLens</div></div>', unsafe_allow_html=True)
-    st.markdown("See. Detect. Protect.")
+    st.markdown("See. Detect. Protect.") # Custom wording
     st.divider()
 
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric(label="System Status", value=st.session_state.system_status)
-    with col2: st.metric(label="Grids Treated", value=st.session_state.sprayed_plots_count)
+    with col2: st.metric(label="Grids Treated", value=st.session_state.sprayed_plots_count) # Custom wording
     with col3: st.metric(label="Tank Level", value=f"{st.session_state.tank_level:.1f} %")
     with col4: st.metric(label="Battery Level", value=f"{st.session_state.battery_level:.1f} %")
     
     st.divider()
 
-    # --- NEW LAYOUT: Grid (2.5) and Right Column (1.5) ---
+    # --- LAYOUT: Grid (2.5) and Right Column (1.5) with stacking ---
     grid_col, right_col = st.columns([2.5, 1.5])
     
     with grid_col:
@@ -185,7 +184,7 @@ if st.session_state.view == "dashboard":
                     st.rerun()
 
     with right_col:
-        # 1. Video Feed (Simulated)
+        # 1. Video Feed (Simulated - using local file path)
         st.subheader("📹 Live Feed")
         st.video(CAMERA_FEED_URL, loop=True, start_time=0) 
 
