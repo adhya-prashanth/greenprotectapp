@@ -37,21 +37,10 @@ CAMERA_FEED_URL = "Camera feed.mp4"
 
 # --- Helper Functions ---
 
-# NEW: Function to encode the video file into a Base64 string for embedding
-def get_video_base64(path):
-    try:
-        with open(path, "rb") as video_file:
-            encoded_string = base64.b64encode(video_file.read()).decode()
-        return encoded_string
-    except FileNotFoundError:
-        # If file is missing, log an error but don't crash the app
-        st.error(f"Video file not found at '{path}'. Please ensure it is uploaded to GitHub.")
-        return None
-
 # FIX: Removed @st.cache_data to prevent object serialization errors for image object
 def get_base_image(path):
     try: return Image.open(path).convert("RGBA")
-    except FileNotFoundError: st.error(f"Image file not found at '{path}'."); return None
+    except FileNotFoundError: st.error(f"Image file not found at '{path}'. Please ensure it is uploaded to GitHub."); return None
 
 # FIX: Removed @st.cache_data and uses truetype with the file to respect size
 def get_font(size):
@@ -92,6 +81,17 @@ def create_grid_image(base_img, status, text):
     tile.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
+# NEW: Function to encode the video file into a Base64 string for embedding
+def get_video_base64(path):
+    try:
+        with open(path, "rb") as video_file:
+            encoded_string = base64.b64encode(video_file.read()).decode()
+        return encoded_string
+    except FileNotFoundError:
+        # If file is missing, log an error but don't crash the app
+        st.error(f"Video file not found at '{path}'. Please ensure it is uploaded to GitHub.")
+        return None
+
 def add_to_log(message):
     st.session_state.event_log.insert(0, f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
     if len(st.session_state.event_log) > 20: st.session_state.event_log.pop()
@@ -129,7 +129,6 @@ st.markdown("""
         padding: 0;
         font-size: 3.5rem;
     }
-    /* Removed aggressive video CSS hacks, relying on Base64 embedding */
 </style>
 """, unsafe_allow_html=True)
 
@@ -199,7 +198,9 @@ def update_static_display(status_array, is_dashboard_view=False):
     with grid_placeholder.container():
         if is_dashboard_view:
             images_b64 = [f"data:image/png;base64,{create_grid_image(base_image, st.session_state.grid_status[r,c], f'Grid ({r},{c})')}" for r in range(GRID_ROWS) for c in range(GRID_COLS)]
-            clicked_index = clickable_images(images_b64, titles=[f"Grid {i}" for i in range(len(images_b64))], div_style={"display": "grid", "grid-template-columns": f"repeat({GRID_COLS}, 1fr)", "gap": "8px"}, img_style={"height": "130px", "width": "100%", "object-fit": "cover", "border-radius": "10px", "cursor": "pointer"})
+            
+            # FIX: Increased image height to 160px to stabilize layout height
+            clicked_index = clickable_images(images_b64, titles=[f"Grid {i}" for i in range(len(images_b64))], div_style={"display": "grid", "grid-template-columns": f"repeat({GRID_COLS}, 1fr)", "gap": "8px"}, img_style={"height": "160px", "width": "100%", "object-fit": "cover", "border-radius": "10px", "cursor": "pointer"})
             
             if clicked_index > -1:
                 r, c = clicked_index // GRID_COLS, clicked_index % GRID_COLS
@@ -212,6 +213,7 @@ def update_static_display(status_array, is_dashboard_view=False):
             for i in range(GRID_ROWS * GRID_COLS):
                 r, c = i // GRID_COLS, i % GRID_COLS
                 img_b64 = create_grid_image(base_image, status_array[r, c], f'Grid ({r},{c})')
+                # Note: In the animation view, st.image scales, but the overall height should now be consistent 
                 cols[c].image(f"data:image/png;base64,{img_b64}")
 
 # --- Video/Log update utility ---
@@ -222,7 +224,7 @@ def update_video_and_log():
     video_base64 = get_video_base64(CAMERA_FEED_URL)
 
     if video_base64:
-        # NEW FIX: Use pure HTML/Base64 to force autoplay, loop, mute, and NO controls
+        # Uses Base64 embedding to ensure autoplay, loop, mute, and NO controls
         html_video = f"""
         <video width="100%" height="auto" autoplay loop muted playsinline>
             <source src="data:video/mp4;base64,{video_base64}" type="video/mp4">
