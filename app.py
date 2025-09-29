@@ -167,8 +167,8 @@ if st.session_state.view == "dashboard":
     
     st.divider()
 
-    # --- LAYOUT: Grid (2.5) and Right Column (1.5) with stacking ---
-    grid_col, right_col = st.columns([2.5, 1.5])
+    # --- LAYOUT ADJUSTMENT: Map (3.5) and Right Column (1.0) to make video smaller ---
+    grid_col, right_col = st.columns([3.5, 1.0])
     
     with grid_col:
         st.subheader("🌾 Interactive Field Map")
