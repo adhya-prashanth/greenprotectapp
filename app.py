@@ -155,7 +155,7 @@ is_running = st.session_state.system_status != "Idle"
 with st.sidebar:
     st.header("⚙️ System Controls")
     st.divider()
-    st.subheader("Autonomous Mode")
+    st.subheader("Autonomous Cycle") # CHANGED: "Autonomous Mode" to "Autonomous Cycle"
     if st.button("▶️ Start Autonomous Cycle", use_container_width=True, type="primary", disabled=is_running):
         st.session_state.view = "autonomous_cycle"
         st.rerun()
@@ -258,7 +258,7 @@ def update_video_and_log():
     if video_base64:
         # Uses Base64 embedding to ensure autoplay, loop, mute, and NO controls
         html_video = f"""
-        <video width="100%" height="auto" autoplay loop muted playsinline>
+        <video width="100%" height="auto" autoplay loop muted playspinslane>
             <source src="data:video/mp4;base64,{video_base64}" type="video/mp4">
             Your browser does not support the video tag.
         </video>
@@ -314,7 +314,7 @@ elif st.session_state.view == "review_scan":
 else: 
     update_video_and_log()
     
-    # --- Logic for Autonomous Cycle (FIXED SCANNING FLOW) ---
+    # --- Logic for Autonomous Cycle (INSTANT SCANNING) ---
     if st.session_state.view == "autonomous_cycle":
         st.session_state.system_status = "Scanning"
         add_to_log("🤖 Autonomous scan initiated on main grid...")
@@ -325,27 +325,32 @@ else:
         
         current_status = st.session_state.grid_status.copy()
         scan_results_to_store = [] # Temporarily store results during scan
-        
+
+        # Step 1: Simulate Instant Scanning (Show all yellow quickly)
         for r in range(GRID_ROWS):
             for c in range(GRID_COLS):
                 current_status[r, c] = STATE_SCANNING
-                update_static_display(current_status) 
-                time.sleep(0.15) 
-                
+        update_static_display(current_status) 
+        time.sleep(0.5) # Wait half a second for the "scan flash"
+        
+        # Step 2: Determine and Apply Final States (Instantly)
+        for r in range(GRID_ROWS):
+            for c in range(GRID_COLS):
                 is_diseased = (r, c) in diseased_coords
                 
                 if is_diseased:
                     final_state = STATE_DISEASED
-                    detected_disease = random.choice(DISEASE_TYPES) # Assign random disease (with severity tag)
+                    detected_disease = random.choice(DISEASE_TYPES)
                     scan_results_to_store.append({"coords": (r, c), "disease": detected_disease})
                 else:
                     final_state = STATE_HEALTHY 
                     
                 st.session_state.grid_status[r, c] = final_state 
                 current_status[r, c] = final_state
-                
-                update_static_display(current_status)
-                time.sleep(0.05) 
+        
+        # Update the grid to final results instantly
+        update_static_display(current_status) 
+        time.sleep(0.5) # Wait half a second after results appear before moving to spraying
 
         # STORE FINAL SCAN RESULTS
         st.session_state.last_scan_results = scan_results_to_store
