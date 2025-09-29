@@ -98,7 +98,7 @@ if 'initialized' not in st.session_state:
     st.session_state.initialized = True
     add_to_log("System Initialized. Ready for operation.")
 
-# --- UI Styling (Updated Gradient and Title Container) ---
+# --- UI Styling (Updated Gradient, Title Container, and Video Controls Hiding) ---
 st.markdown("""
 <style>
     .title-gradient {
@@ -121,6 +121,18 @@ st.markdown("""
         padding: 0;
         font-size: 3.5rem;
     }
+    /* START: FIX to simulate GIF by hiding video controls */
+    [data-testid="stVideo"] video {
+        /* Disables native controls */
+        pointer-events: none;
+    }
+    [data-testid="stVideo"] video::-webkit-media-controls {
+        display: none !important;
+    }
+    [data-testid="stVideo"] video::-moz-media-controls {
+        display: none !important;
+    }
+    /* END: FIX to simulate GIF by hiding video controls */
 </style>
 """, unsafe_allow_html=True)
 
@@ -220,7 +232,7 @@ def update_video_and_log():
     video_header_placeholder.subheader("📹 Live Feed")
     
     # FIX: Reverted to st.video for stable file path handling.
-    # It will play reliably, but may show minimal controls based on the browser.
+    # We rely on the CSS hack above to hide the controls.
     video_player_placeholder.video(CAMERA_FEED_URL, loop=True, start_time=0, muted=True) 
 
 
