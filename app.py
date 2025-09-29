@@ -10,6 +10,7 @@ import base64
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 from streamlit_clickable_images import clickable_images
+import pandas as pd # Import pandas for improved dataframe handling
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -36,7 +37,9 @@ FONT_PATH = "Roboto-Regular.ttf"
 CAMERA_FEED_URL = "Camera feed.mp4" 
 
 # --- NEW DISEASE CONSTANT ---
-DISEASE_TYPES = ["Blight", "Rust", "Powdery Mildew", "Leaf Spot", "Aphids", "Nematodes"]
+DISEASE_TYPES = ["Blight (Severe)", "Rust (Moderate)", "Powdery Mildew (Moderate)", "Leaf Spot (Low)", "Aphids (Severe)", "Nematodes (Low)"]
+# --- NEW CONSTANT: Pesticide used per grid in Autonomous Cycle ---
+AUTONOMOUS_SPRAY_AMOUNT = 2.5 
 
 # --- Helper Functions ---
 
@@ -99,6 +102,15 @@ def add_to_log(message):
     st.session_state.event_log.insert(0, f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
     if len(st.session_state.event_log) > 20: st.session_state.event_log.pop()
 
+# NEW: Function to determine urgency based on disease name
+def get_urgency_level(disease_name):
+    if "Severe" in disease_name:
+        return "Severe 🔴"
+    elif "Moderate" in disease_name:
+        return "Moderate 🟠"
+    else: # Low, or any other unknown disease
+        return "Low 🟡"
+
 # --- State Initialization ---
 if 'initialized' not in st.session_state:
     st.session_state.grid_status = np.full((GRID_ROWS, GRID_COLS), STATE_HEALTHY, dtype=int)
@@ -148,11 +160,20 @@ with st.sidebar:
         st.session_state.view = "autonomous_cycle"
         st.rerun()
 
-    # NEW BUTTON ADDED HERE
+    # NEW BUTTON ADDED HERE with Tooltip for disabled state
     scan_review_disabled = is_running or st.session_state.last_scan_results is None
-    if st.button("🔎 Review Last Scan", use_container_width=True, disabled=scan_review_disabled):
-        st.session_state.view = "review_scan"
-        st.rerun()
+    
+    tooltip_message = "Complete Autonomous Scan first."
+    
+    # We use st.empty() to conditionally render the tooltip
+    if scan_review_disabled:
+        with st.empty():
+             st.button("🔎 Review Last Scan", use_container_width=True, disabled=True, help=tooltip_message)
+    else:
+        if st.button("🔎 Review Last Scan", use_container_width=True, disabled=False):
+            st.session_state.view = "review_scan"
+            st.rerun()
+
 
     st.divider()
     st.subheader("Manual Spray")
@@ -270,12 +291,17 @@ elif st.session_state.view == "review_scan":
         # Prepare data for display
         results_data = [{
             "Grid Coords": f"({r['coords'][0]}, {r['coords'][1]})", 
-            "Detected Disease": r['disease']
+            "Detected Disease": r['disease'].split(" (")[0], # Show only the name
+            "Urgency": get_urgency_level(r['disease']), # NEW: Urgency level
+            "Pesticide Used": f"{AUTONOMOUS_SPRAY_AMOUNT:.1f} %" # NEW: Pesticide used
         } for r in st.session_state.last_scan_results]
         
         st.success(f"Scan found **{len(results_data)}** plots requiring attention.")
         
-        st.dataframe(results_data, hide_index=True, use_container_width=True)
+        # Use Pandas DataFrame for better table display with colors
+        df = pd.DataFrame(results_data)
+
+        st.dataframe(df, hide_index=True, use_container_width=True)
 
     else:
         st.warning("No disease was detected in the last scan, or no scan data is available. Please run an Autonomous Cycle first.")
@@ -310,7 +336,7 @@ else:
                 
                 if is_diseased:
                     final_state = STATE_DISEASED
-                    detected_disease = random.choice(DISEASE_TYPES) # Assign random disease
+                    detected_disease = random.choice(DISEASE_TYPES) # Assign random disease (with severity tag)
                     scan_results_to_store.append({"coords": (r, c), "disease": detected_disease})
                 else:
                     final_state = STATE_HEALTHY 
@@ -339,7 +365,7 @@ else:
         for r_plot, c_plot in diseased_coords:
             st.session_state.grid_status[r_plot, c_plot] = STATE_SPRAYED
             st.session_state.sprayed_plots_count += 1
-            st.session_state.tank_level = max(0, st.session_state.tank_level - 2.5)
+            st.session_state.tank_level = max(0, st.session_state.tank_level - AUTONOMOUS_SPRAY_AMOUNT)
         add_to_log(f"✅ {len(diseased_coords)} grids have been treated.")
         
         st.session_state.system_status = "Idle"
