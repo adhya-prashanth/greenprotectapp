@@ -188,8 +188,10 @@ with st.sidebar:
 
     st.divider()
     st.subheader("Manual Spray")
-    row_sel = st.selectbox("Select Row (1-4)", range(GRID_ROWS), format_func=lambda x: x + 1, disabled=is_running)
-    col_sel = st.selectbox("Select Column (1-4)", range(GRID_COLS), format_func=lambda x: x + 1, disabled=is_running)
+    # FIX: Added index=0 to stabilize default state
+    row_sel = st.selectbox("Select Row (1-4)", range(GRID_ROWS), index=0, format_func=lambda x: x + 1, disabled=is_running)
+    # FIX: Added index=0 to stabilize default state
+    col_sel = st.selectbox("Select Column (1-4)", range(GRID_COLS), index=0, format_func=lambda x: x + 1, disabled=is_running)
     # Manual amount changed to Liters (L) for consistency
     manual_amount = st.slider("Pesticide Amount (L)", 1.0, 10.0, 2.5, 0.5, disabled=is_running)
 
