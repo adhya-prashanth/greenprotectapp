@@ -157,12 +157,12 @@ with st.sidebar:
 if st.session_state.view == "dashboard":
     # Title rendering
     st.markdown('<div class="title-container"><h1>🌱</h1><div class="title-gradient">LeafLens</div></div>', unsafe_allow_html=True)
-    st.markdown("Main dashboard for system monitoring and manual control.")
+    st.markdown("See. Detect. Protect.")
     st.divider()
 
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric(label="System Status", value=st.session_state.system_status)
-    with col2: st.metric(label="Plots Treated", value=st.session_state.sprayed_plots_count)
+    with col2: st.metric(label="Grids Treated", value=st.session_state.sprayed_plots_count)
     with col3: st.metric(label="Tank Level", value=f"{st.session_state.tank_level:.1f} %")
     with col4: st.metric(label="Battery Level", value=f"{st.session_state.battery_level:.1f} %")
     
