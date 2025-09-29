@@ -250,7 +250,7 @@ def update_static_display(status_array, is_dashboard_view=False):
     
     with grid_placeholder.container():
         if is_dashboard_view:
-            # FIX: Pass 0-indexed r, c to create_grid_image for 1-indexed display
+            # FIX: Correctly pass r and c indices to create_grid_image
             images_b64 = [f"data:image/png;base64,{create_grid_image(base_image, st.session_state.grid_status[r,c], r, c)}" for r in range(GRID_ROWS) for c in range(GRID_COLS)]
             
             # FIX: Increased image height to 180px for better vertical alignment
@@ -267,6 +267,7 @@ def update_static_display(status_array, is_dashboard_view=False):
             cols = st.columns(GRID_COLS)
             for i in range(GRID_ROWS * GRID_COLS):
                 r, c = i // GRID_COLS, i % GRID_COLS
+                # FIX: Correctly pass r and c indices to create_grid_image
                 img_b64 = create_grid_image(base_image, status_array[r, c], r, c)
                 # Note: In the animation view, st.image scales, but the overall height should now be consistent 
                 cols[c].image(f"data:image/png;base64,{img_b64}")
