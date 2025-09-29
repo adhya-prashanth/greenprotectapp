@@ -168,8 +168,8 @@ if st.session_state.view == "dashboard":
     
     st.divider()
 
-    # --- NEW LAYOUT: Grid, Video Feed, Log (2.5 : 1.0 : 1.0) ---
-    grid_col, video_col, log_col = st.columns([2.5, 1.0, 1.0])
+    # --- NEW LAYOUT: Grid (2.5) and Right Column (1.5) ---
+    grid_col, right_col = st.columns([2.5, 1.5])
     
     with grid_col:
         st.subheader("🌾 Interactive Field Map")
@@ -184,15 +184,16 @@ if st.session_state.view == "dashboard":
                     add_to_log(f"Manual Inspection: Disease marked at Grid ({r},{c}).")
                     st.rerun()
 
-    with video_col:
+    with right_col:
+        # 1. Video Feed (Simulated)
         st.subheader("📹 Live Feed")
-        st.video(CAMERA_FEED_URL, loop=True, start_time=0) # Moved video here
+        st.video(CAMERA_FEED_URL, loop=True, start_time=0) 
 
-    with log_col:
+        # 2. Event Log (Stacked below the video)
         st.subheader("📜 Event Log")
-        # Adjusted height is 520px from original code, kept for consistency
         log_content = "<br>".join(st.session_state.event_log)
-        st.markdown(f'<div style="background-color:#1F2937; border-radius:10px; padding:10px; height:520px; overflow-y:auto; border:1px solid #4B5563; font-family:monospace;">{log_content}</div>', unsafe_allow_html=True)
+        # Height adjusted to balance the combined column space
+        st.markdown(f'<div style="background-color:#1F2937; border-radius:10px; padding:10px; height:250px; overflow-y:auto; border:1px solid #4B5563; font-family:monospace;">{log_content}</div>', unsafe_allow_html=True)
 
 ## --- ANIMATION VIEWS (Autonomous, Manual, Blanket) ---
 else:
