@@ -163,17 +163,16 @@ if st.session_state.view == "dashboard":
     with col1: st.metric(label="System Status", value=st.session_state.system_status)
     with col2: st.metric(label="Grids Treated", value=st.session_state.sprayed_plots_count) # Custom wording
     with col3: st.metric(label="Tank Level", value=f"{st.session_state.tank_level:.1f} %")
-    # CHANGE 1: Replaced Battery Level with Cameras Active
     with col4: st.metric(label="Cameras Active", value="4") 
     
     st.divider()
 
-    # --- LAYOUT ADJUSTMENT: Map (3.5) and Right Column (1.0) to make video smaller ---
-    grid_col, right_col = st.columns([3.5, 1.0])
+    # --- TOP ROW: Map and Video Side-by-Side ---
+    # Map (3.5) and Video (1.5)
+    map_col, video_col = st.columns([3.5, 1.5])
     
-    with grid_col:
-        # CHANGE 2: Updated Interactive Field Map header
-        st.subheader("🌾 1 Acre - 4x4 Grids") 
+    with map_col:
+        st.subheader("1 Acre - 4x4 Grids") 
         base_image = get_base_image(IMAGE_PATH)
         if base_image:
             images_b64 = [f"data:image/png;base64,{create_grid_image(base_image, st.session_state.grid_status[r,c], f'Grid ({r},{c})')}" for r in range(GRID_ROWS) for c in range(GRID_COLS)]
@@ -185,16 +184,17 @@ if st.session_state.view == "dashboard":
                     add_to_log(f"Manual Inspection: Disease marked at Grid ({r},{c}).")
                     st.rerun()
 
-    with right_col:
-        # 1. Video Feed (Simulated - using local file path)
+    with video_col:
         st.subheader("📹 Live Feed")
-        st.video(CAMERA_FEED_URL, loop=True, start_time=0) 
+        # CHANGE 1: Muted=True to remove sound
+        st.video(CAMERA_FEED_URL, loop=True, start_time=0, muted=True) 
 
-        # 2. Event Log (Stacked below the video)
-        st.subheader("📜 Event Log")
-        log_content = "<br>".join(st.session_state.event_log)
-        # Height adjusted to balance the combined column space
-        st.markdown(f'<div style="background-color:#1F2937; border-radius:10px; padding:10px; height:250px; overflow-y:auto; border:1px solid #4B5563; font-family:monospace;">{log_content}</div>', unsafe_allow_html=True)
+    # --- BOTTOM ROW: Event Log Stretched Across ---
+    st.subheader("📜 Event Log")
+    log_content = "<br>".join(st.session_state.event_log)
+    # Height adjusted to keep log concise but readable under the video/map
+    st.markdown(f'<div style="background-color:#1F2937; border-radius:10px; padding:10px; height:200px; overflow-y:auto; border:1px solid #4B5563; font-family:monospace;">{log_content}</div>', unsafe_allow_html=True)
+
 
 ## --- ANIMATION VIEWS (Autonomous, Manual, Blanket) ---
 else:
