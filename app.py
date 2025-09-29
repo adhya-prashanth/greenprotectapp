@@ -199,8 +199,8 @@ def update_static_display(status_array, is_dashboard_view=False):
         if is_dashboard_view:
             images_b64 = [f"data:image/png;base64,{create_grid_image(base_image, st.session_state.grid_status[r,c], f'Grid ({r},{c})')}" for r in range(GRID_ROWS) for c in range(GRID_COLS)]
             
-            # FIX: Increased image height to 160px to stabilize layout height
-            clicked_index = clickable_images(images_b64, titles=[f"Grid {i}" for i in range(len(images_b64))], div_style={"display": "grid", "grid-template-columns": f"repeat({GRID_COLS}, 1fr)", "gap": "8px"}, img_style={"height": "160px", "width": "100%", "object-fit": "cover", "border-radius": "10px", "cursor": "pointer"})
+            # FIX: Increased image height to 180px for better vertical alignment
+            clicked_index = clickable_images(images_b64, titles=[f"Grid {i}" for i in range(len(images_b64))], div_style={"display": "grid", "grid-template-columns": f"repeat({GRID_COLS}, 1fr)", "gap": "8px"}, img_style={"height": "180px", "width": "100%", "object-fit": "cover", "border-radius": "10px", "cursor": "pointer"})
             
             if clicked_index > -1:
                 r, c = clicked_index // GRID_COLS, clicked_index % GRID_COLS
