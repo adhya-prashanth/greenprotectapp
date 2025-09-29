@@ -121,18 +121,23 @@ st.markdown("""
         padding: 0;
         font-size: 3.5rem;
     }
-    /* START: FIX to simulate GIF by hiding video controls */
+    /* START: AGGRESSIVE FIX to simulate GIF by hiding video controls */
+    /* Target the video element directly using attribute selector */
     [data-testid="stVideo"] video {
-        /* Disables native controls */
-        pointer-events: none;
+        pointer-events: none !important; /* Disable clicking to pause/resume */
     }
-    [data-testid="stVideo"] video::-webkit-media-controls {
+    /* Target the control bar specifically in major browsers */
+    [data-testid="stVideo"] video::-webkit-media-controls-panel,
+    [data-testid="stVideo"] video::-webkit-media-controls-enclosure,
+    [data-testid="stVideo"] video::-webkit-media-controls-timeline,
+    [data-testid="stVideo"] video::-moz-media-controls-panel,
+    [data-testid="stVideo"] video::-ms-media-controls-panel {
         display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        height: 0 !important;
     }
-    [data-testid="stVideo"] video::-moz-media-controls {
-        display: none !important;
-    }
-    /* END: FIX to simulate GIF by hiding video controls */
+    /* END: AGGRESSIVE FIX to simulate GIF by hiding video controls */
 </style>
 """, unsafe_allow_html=True)
 
@@ -232,7 +237,7 @@ def update_video_and_log():
     video_header_placeholder.subheader("📹 Live Feed")
     
     # FIX: Reverted to st.video for stable file path handling.
-    # We rely on the CSS hack above to hide the controls.
+    # We rely on the aggressive CSS hack above to hide the controls.
     video_player_placeholder.video(CAMERA_FEED_URL, loop=True, start_time=0, muted=True) 
 
 
