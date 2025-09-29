@@ -29,8 +29,13 @@ STATE_SCANNING = 3
 STATE_SPRAYED = 4
 IMAGE_PATH = "crop_top_view.png"
 
-# --- FONT CONSTANT: CRITICAL TO ENSURE THIS FILE IS ON GITHUB ---
+# --- FONT CONSTANT: MUST MATCH THE FILE ON GITHUB ---
 FONT_PATH = "Roboto-Regular.ttf"
+
+# --- VIDEO CONSTANT ADDED ---
+# Using a sample video URL to simulate a continuous camera feed. 
+# Replace this URL with a path to your own video file if you upload one to GitHub.
+CAMERA_FEED_URL = "https://www.w3schools.com/html/mov_bbb.mp4" 
 
 # --- Helper Functions ---
 
@@ -150,7 +155,7 @@ with st.sidebar:
 
 ## --- DASHBOARD VIEW ---
 if st.session_state.view == "dashboard":
-    # CHANGED: Title rendered with separate emoji and gradient div
+    # Title rendering
     st.markdown('<div class="title-container"><h1>🌱</h1><div class="title-gradient">LeafLens</div></div>', unsafe_allow_html=True)
     st.markdown("Main dashboard for system monitoring and manual control.")
     st.divider()
@@ -160,6 +165,12 @@ if st.session_state.view == "dashboard":
     with col2: st.metric(label="Plots Treated", value=st.session_state.sprayed_plots_count)
     with col3: st.metric(label="Tank Level", value=f"{st.session_state.tank_level:.1f} %")
     with col4: st.metric(label="Battery Level", value=f"{st.session_state.battery_level:.1f} %")
+    
+    st.divider()
+
+    # --- VIDEO FEED ADDED HERE ---
+    st.subheader("📹 Live Field View (Simulated)")
+    st.video(CAMERA_FEED_URL, loop=True, start_time=0)
     st.divider()
 
     grid_col, log_col = st.columns([2, 1.2])
@@ -183,6 +194,7 @@ if st.session_state.view == "dashboard":
 
 ## --- ANIMATION VIEWS (Autonomous, Manual, Blanket) ---
 else:
+    # Title rendering
     st.markdown('<div class="title-container"><h1>🌱</h1><div class="title-gradient">LeafLens</div></div>', unsafe_allow_html=True)
     st.markdown(f"**Current Task:** {st.session_state.view.replace('_', ' ').title()}")
     st.divider()
